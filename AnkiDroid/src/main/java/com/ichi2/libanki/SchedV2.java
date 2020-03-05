@@ -1371,7 +1371,7 @@ public class SchedV2 extends Sched {
         try {
             conf = _lapseConf(card);
             card.setLapses(card.getLapses() + 1);
-            card.setFactor(Math.max(1300, card.getFactor() - 200));
+            card.setFactor(2500);
             int delay;
 
             boolean suspended = _checkLeech(card, conf) && card.getQueue() == -1;
@@ -1416,7 +1416,7 @@ public class SchedV2 extends Sched {
         }
 
         // then the rest
-        card.setFactor(Math.max(1300, card.getFactor() + FACTOR_ADDITION_VALUES[ease - 2]));
+        card.setFactor(2500);
         card.setDue(mToday + card.getIvl());
 
         // card leaves filtered deck
