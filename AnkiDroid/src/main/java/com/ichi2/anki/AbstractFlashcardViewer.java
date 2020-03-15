@@ -1579,45 +1579,20 @@ public abstract class AbstractFlashcardViewer extends NavigationDrawerActivity {
         mEase4Layout.setBackgroundResource(background[3]);
         switch (buttonCount) {
             case 2:
-                // Ease 2 is "good"
-                mEase2Layout.setVisibility(View.VISIBLE);
-                mEase2Layout.setBackgroundResource(background[2]);
-                mEase2.setText(R.string.ease_button_good);
-                mEase2.setTextColor(textColor[2]);
-                mNext2.setTextColor(textColor[2]);
-                mEase2Layout.requestFocus();
-                break;
             case 3:
-                // Ease 2 is good
                 mEase2Layout.setVisibility(View.VISIBLE);
                 mEase2Layout.setBackgroundResource(background[2]);
                 mEase2.setText(R.string.ease_button_good);
                 mEase2.setTextColor(textColor[2]);
                 mNext2.setTextColor(textColor[2]);
-                // Ease 3 is easy
-                mEase3Layout.setVisibility(View.VISIBLE);
-                mEase3Layout.setBackgroundResource(background[3]);
-                mEase3.setText(R.string.ease_button_easy);
-                mEase3.setTextColor(textColor[3]);
-                mNext3.setTextColor(textColor[3]);
                 mEase2Layout.requestFocus();
                 break;
             default:
-                mEase2Layout.setVisibility(View.VISIBLE);
-                // Ease 2 is "hard"
-                mEase2Layout.setVisibility(View.VISIBLE);
-                mEase2Layout.setBackgroundResource(background[1]);
-                mEase2.setText(R.string.ease_button_hard);
-                mEase2.setTextColor(textColor[1]);
-                mNext2.setTextColor(textColor[1]);
-                mEase2Layout.requestFocus();
-                // Ease 3 is good
                 mEase3Layout.setVisibility(View.VISIBLE);
                 mEase3Layout.setBackgroundResource(background[2]);
                 mEase3.setText(R.string.ease_button_good);
                 mEase3.setTextColor(textColor[2]);
                 mNext3.setTextColor(textColor[2]);
-                mEase4Layout.setVisibility(View.VISIBLE);
                 mEase3Layout.requestFocus();
                 break;
         }

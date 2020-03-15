@@ -1346,7 +1346,7 @@ public class Sched {
             if (_resched(card)) {
                 card.setLapses(card.getLapses() + 1);
                 card.setIvl(_nextLapseIvl(card, conf));
-                card.setFactor(Math.max(1300, card.getFactor() - 200));
+                card.setFactor(2500);
                 card.setDue(mToday + card.getIvl());
                 // if it's a filtered deck, update odue as well
                 if (card.getODid() != 0) {
@@ -1402,7 +1402,7 @@ public class Sched {
         if (_resched(card)) {
             _updateRevIvl(card, ease);
             // then the rest
-            card.setFactor(Math.max(1300, card.getFactor() + FACTOR_ADDITION_VALUES[ease - 2]));
+            card.setFactor(2500);
             card.setDue(mToday + card.getIvl());
         } else {
             card.setDue(card.getODue());
