@@ -4,6 +4,7 @@ package com.ichi2.anki;
 import android.app.Activity;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -34,6 +35,8 @@ import com.ichi2.compat.CompatHelper;
 import com.ichi2.compat.customtabs.CustomTabActivityHelper;
 import com.ichi2.libanki.Collection;
 import com.ichi2.themes.Themes;
+import com.ichi2.utils.IntentTop;
+import com.ichi2.utils.IntentTopNewTask;
 
 import timber.log.Timber;
 
@@ -171,20 +174,24 @@ public class AnkiActivity extends AppCompatActivity implements SimpleMessageDial
     @Deprecated
     @Override
     public void startActivityForResult(Intent intent, int requestCode) {
-        super.startActivityForResult(intent, requestCode);
+        try {
+            super.startActivityForResult(intent, requestCode);
+        } catch (ActivityNotFoundException e) {
+            UIUtils.showSimpleSnackbar(this, R.string.activity_start_failed,true);
+        }
     }
 
 
     public void startActivityForResultWithoutAnimation(Intent intent, int requestCode) {
         disableIntentAnimation(intent);
-        super.startActivityForResult(intent, requestCode);
+        startActivityForResult(intent, requestCode);
         disableActivityAnimation();
     }
 
 
     public void startActivityForResultWithAnimation(Intent intent, int requestCode, int animation) {
         enableIntentAnimation(intent);
-        super.startActivityForResult(intent, requestCode);
+        startActivityForResult(intent, requestCode);
         enableActivityAnimation(animation);
     }
 
@@ -267,9 +274,8 @@ public class AnkiActivity extends AppCompatActivity implements SimpleMessageDial
             if (col != null) {
                 onCollectionLoaded(col);
             } else {
-                Intent deckPicker = new Intent(this, DeckPicker.class);
+                Intent deckPicker = new IntentTopNewTask(this, DeckPicker.class);
                 deckPicker.putExtra("collectionLoadError", true); // don't currently do anything with this
-                deckPicker.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
                 startActivityWithAnimation(deckPicker, ActivityTransitionAnimation.LEFT);
             }
         });
@@ -425,8 +431,8 @@ public class AnkiActivity extends AppCompatActivity implements SimpleMessageDial
                 builder.setLights(Color.BLUE, 1000, 1000);
             }
             // Creates an explicit intent for an Activity in your app
-            Intent resultIntent = new Intent(this, DeckPicker.class);
-            resultIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            Intent resultIntent = new IntentTopNewTask(this, DeckPicker.class);
+            resultIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);
             PendingIntent resultPendingIntent = PendingIntent.getActivity(this, 0, resultIntent, PendingIntent.FLAG_UPDATE_CURRENT);
             builder.setContentIntent(resultPendingIntent);
             NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
@@ -445,8 +451,7 @@ public class AnkiActivity extends AppCompatActivity implements SimpleMessageDial
     public void dismissSimpleMessageDialog(boolean reload) {
         dismissAllDialogFragments();
         if (reload) {
-            Intent deckPicker = new Intent(this, DeckPicker.class);
-            deckPicker.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+            Intent deckPicker = new IntentTopNewTask(this, DeckPicker.class);
             startActivityWithoutAnimation(deckPicker);
         }
     }
@@ -461,7 +466,7 @@ public class AnkiActivity extends AppCompatActivity implements SimpleMessageDial
     // Restart the activity
     public void restartActivity() {
         Timber.i("AnkiActivity -- restartActivity()");
-        Intent intent = new Intent();
+        Intent intent = new IntentTop();
         intent.setClass(this, this.getClass());
         intent.putExtras(new Bundle());
         this.startActivityWithoutAnimation(intent);

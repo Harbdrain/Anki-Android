@@ -61,6 +61,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.Window;
+import android.view.WindowManager;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -103,6 +104,7 @@ import com.ichi2.libanki.Utils;
 import com.ichi2.libanki.importer.AnkiPackageImporter;
 import com.ichi2.themes.StyledProgressDialog;
 import com.ichi2.utils.ImportUtils;
+import com.ichi2.utils.IntentTop;
 import com.ichi2.utils.VersionUtils;
 import com.ichi2.widget.WidgetStatus;
 
@@ -593,7 +595,7 @@ public class DeckPicker extends NavigationDrawerActivity implements
 
             case R.id.action_model_browser_open: {
                 Timber.i("DeckPicker:: Model browser button pressed");
-                Intent noteTypeBrowser = new Intent(this, ModelBrowser.class);
+                Intent noteTypeBrowser = new IntentTop(this, ModelBrowser.class);
                 startActivityForResultWithAnimation(noteTypeBrowser, 0, ActivityTransitionAnimation.LEFT);
                 return true;
             }
@@ -882,7 +884,7 @@ public class DeckPicker extends NavigationDrawerActivity implements
     }
 
     public void addNote() {
-        Intent intent = new Intent(DeckPicker.this, NoteEditor.class);
+        Intent intent = new IntentTop(DeckPicker.this, NoteEditor.class);
         intent.putExtra(NoteEditor.EXTRA_CALLER, NoteEditor.CALLER_DECKPICKER);
         startActivityForResultWithAnimation(intent, ADD_NOTE, ActivityTransitionAnimation.LEFT);
     }
@@ -897,7 +899,7 @@ public class DeckPicker extends NavigationDrawerActivity implements
             // No space left
             showDialogFragment(DeckPickerBackupNoSpaceLeftDialog.newInstance());
             preferences.edit().remove("noSpaceLeft").apply();
-        } else if (preferences.getString("lastVersion", "").equals("")) {
+        } else if ("".equals(preferences.getString("lastVersion", ""))) {
             // Fresh install
             preferences.edit().putString("lastVersion", VersionUtils.getPkgVersionName()).apply();
             onFinishedStartup();
@@ -1017,7 +1019,7 @@ public class DeckPicker extends NavigationDrawerActivity implements
                 // If no changes are required we go to the new features activity
                 // There the "lastVersion" is set, so that this code is not reached again
                 if (VersionUtils.isReleaseVersion()) {
-                    Intent infoIntent = new Intent(this, Info.class);
+                    Intent infoIntent = new IntentTop(this, Info.class);
                     infoIntent.putExtra(Info.TYPE_EXTRA, Info.TYPE_NEW_VERSION);
 
                     if (skip != 0) {
@@ -1363,9 +1365,10 @@ public class DeckPicker extends NavigationDrawerActivity implements
 
 
     private Connection.TaskListener mSyncListener = new Connection.CancellableTaskListener() {
-        String currentMessage;
-        long countUp;
-        long countDown;
+        private String currentMessage;
+        private long countUp;
+        private long countDown;
+        private boolean dialogDisplayFailure = false;
 
         @Override
         public void onDisconnected() {
@@ -1374,28 +1377,36 @@ public class DeckPicker extends NavigationDrawerActivity implements
 
         @Override
         public void onCancelled() {
-            mProgressDialog.dismiss();
             showSyncLogMessage(R.string.sync_cancelled, "");
-            // update deck list in case sync was cancelled during media sync and main sync was actually successful
-            updateDeckList();
+            if (!dialogDisplayFailure) {
+                mProgressDialog.dismiss();
+                // update deck list in case sync was cancelled during media sync and main sync was actually successful
+                updateDeckList();
+            }
+            // reset our display failure fate, just in case it is re-used
+            dialogDisplayFailure = false;
         }
 
         @Override
         public void onPreExecute() {
             countUp = 0;
             countDown = 0;
-            // Store the current time so that we don't bother the user with a sync prompt for another 10 minutes
-            // Note: getLs() in Libanki doesn't take into account the case when no changes were found, or sync cancelled
-            SharedPreferences preferences = AnkiDroidApp.getSharedPrefs(getBaseContext());
             final long syncStartTime = System.currentTimeMillis();
-            preferences.edit().putLong("lastSyncTime", syncStartTime).apply();
 
             if (mProgressDialog == null || !mProgressDialog.isShowing()) {
-                mProgressDialog = StyledProgressDialog
-                        .show(DeckPicker.this, getResources().getString(R.string.sync_title),
-                                getResources().getString(R.string.sync_title) + "\n"
-                                        + getResources().getString(R.string.sync_up_down_size, countUp, countDown),
-                                false);
+                try {
+                    mProgressDialog = StyledProgressDialog
+                            .show(DeckPicker.this, getResources().getString(R.string.sync_title),
+                                    getResources().getString(R.string.sync_title) + "\n"
+                                            + getResources().getString(R.string.sync_up_down_size, countUp, countDown),
+                                    false);
+                } catch (WindowManager.BadTokenException e) {
+                    // If we could not show the progress dialog to start even, bail out - user will get a message
+                    Timber.w(e, "Unable to display Sync progress dialog, Activity not valid?");
+                    dialogDisplayFailure = true;
+                    Connection.cancel();
+                    return;
+                }
 
                 // Override the back key so that the user can cancel a sync which is in progress
                 mProgressDialog.setOnKeyListener((dialog, keyCode, event) -> {
@@ -1429,6 +1440,11 @@ public class DeckPicker extends NavigationDrawerActivity implements
                     }
                 });
             }
+
+            // Store the current time so that we don't bother the user with a sync prompt for another 10 minutes
+            // Note: getLs() in Libanki doesn't take into account the case when no changes were found, or sync cancelled
+            SharedPreferences preferences = AnkiDroidApp.getSharedPrefs(getBaseContext());
+            preferences.edit().putLong("lastSyncTime", syncStartTime).apply();
         }
 
 
@@ -1542,6 +1558,9 @@ public class DeckPicker extends NavigationDrawerActivity implements
                         showSyncErrorMessage(joinSyncMessages(dialogMessage, syncMessage));
                     } else if ("connectionError".equals(resultType)) {
                         dialogMessage = res.getString(R.string.sync_connection_error);
+                        if (result.length >= 1 && result[1] instanceof Exception) {
+                            dialogMessage += "\n\n" + ((Exception)result[1]).getLocalizedMessage();
+                        }
                         showSyncErrorMessage(joinSyncMessages(dialogMessage, syncMessage));
                     } else if ("IOException".equals(resultType)) {
                         handleDbError();
@@ -1670,7 +1689,7 @@ public class DeckPicker extends NavigationDrawerActivity implements
 
     @Override
     public void loginToSyncServer() {
-        Intent myAccount = new Intent(this, MyAccount.class);
+        Intent myAccount = new IntentTop(this, MyAccount.class);
         myAccount.putExtra("notLoggedIn", true);
         startActivityForResultWithAnimation(myAccount, LOG_IN_FOR_SYNC, ActivityTransitionAnimation.FADE);
     }
@@ -1849,7 +1868,7 @@ public class DeckPicker extends NavigationDrawerActivity implements
             // The fragment will show the study options screen instead of launching a new activity.
             loadStudyOptionsFragment(withDeckOptions);
         } else {
-            Intent intent = new Intent();
+            Intent intent = new IntentTop();
             intent.putExtra("withDeckOptions", withDeckOptions);
             intent.setClass(this, StudyOptionsActivity.class);
             startActivityForResultWithAnimation(intent, SHOW_STUDYOPTIONS, ActivityTransitionAnimation.LEFT);
@@ -2015,12 +2034,12 @@ public class DeckPicker extends NavigationDrawerActivity implements
         // open deck options
         if (getCol().getDecks().isDyn(mContextMenuDid)) {
             // open cram options if filtered deck
-            Intent i = new Intent(DeckPicker.this, FilteredDeckOptions.class);
+            Intent i = new IntentTop(DeckPicker.this, FilteredDeckOptions.class);
             i.putExtra("did", mContextMenuDid);
             startActivityWithAnimation(i, ActivityTransitionAnimation.FADE);
         } else {
             // otherwise open regular options
-            Intent i = new Intent(DeckPicker.this, DeckOptions.class);
+            Intent i = new IntentTop(DeckPicker.this, DeckOptions.class);
             i.putExtra("did", mContextMenuDid);
             startActivityWithAnimation(i, ActivityTransitionAnimation.FADE);
         }
@@ -2224,7 +2243,7 @@ public class DeckPicker extends NavigationDrawerActivity implements
 
 
     private void openReviewer() {
-        Intent reviewer = new Intent(this, Reviewer.class);
+        Intent reviewer = new IntentTop(this, Reviewer.class);
         startActivityForResultWithAnimation(reviewer, REQUEST_REVIEW, ActivityTransitionAnimation.LEFT);
         getCol().startTimebox();
     }

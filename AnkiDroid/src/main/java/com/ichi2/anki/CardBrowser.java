@@ -72,6 +72,7 @@ import com.ichi2.libanki.Note;
 import com.ichi2.libanki.Utils;
 import com.ichi2.themes.Themes;
 import com.ichi2.upgrade.Upgrade;
+import com.ichi2.utils.IntentTop;
 import com.ichi2.widget.WidgetStatus;
 
 import org.json.JSONException;
@@ -81,6 +82,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -200,7 +202,7 @@ public class CardBrowser extends NavigationDrawerActivity implements
                                 .commit();
                     }
                     // default to descending for non-text fields
-                    if (fSortTypes[mOrder].equals("noteFld")) {
+                    if ("noteFld".equals(fSortTypes[mOrder])) {
                         mOrderAsc = true;
                     }
                     getCol().getConf().put("sortBackwards", mOrderAsc);
@@ -463,9 +465,13 @@ public class CardBrowser extends NavigationDrawerActivity implements
             if (mOrder == 1 && preferences.getBoolean("cardBrowserNoSorting", false)) {
                 mOrder = 0;
             }
+            //This upgrade should already have been done during
+            //setConf. However older version of AnkiDroid didn't call
+            //upgradeJSONIfNecessary during setConf, which means the
+            //conf saved may still have this bug.
             mOrderAsc = Upgrade.upgradeJSONIfNecessary(getCol(), getCol().getConf(), "sortBackwards", false);
             // default to descending for non-text fields
-            if (fSortTypes[mOrder].equals("noteFld")) {
+            if ("noteFld".equals(fSortTypes[mOrder])) {
                 mOrderAsc = !mOrderAsc;
             }
         } catch (JSONException e) {
@@ -568,7 +574,7 @@ public class CardBrowser extends NavigationDrawerActivity implements
                     mCurrentCardId = Long.parseLong(getCards().get(position).get("id"));
                     sCardBrowserCard = getCol().getCard(mCurrentCardId);
                     // start note editor using the card we just loaded
-                    Intent editCard = new Intent(CardBrowser.this, NoteEditor.class);
+                    Intent editCard = new IntentTop(CardBrowser.this, NoteEditor.class);
                     editCard.putExtra(NoteEditor.EXTRA_CALLER, NoteEditor.CALLER_CARDBROWSER_EDIT);
                     editCard.putExtra(NoteEditor.EXTRA_CARD_ID, sCardBrowserCard.getId());
                     startActivityForResultWithAnimation(editCard, EDIT_CARD, ActivityTransitionAnimation.LEFT);
@@ -792,7 +798,7 @@ public class CardBrowser extends NavigationDrawerActivity implements
                 endMultiSelectMode();
                 return true;
             case R.id.action_add_card_from_card_browser: {
-                Intent intent = new Intent(CardBrowser.this, NoteEditor.class);
+                Intent intent = new IntentTop(CardBrowser.this, NoteEditor.class);
                 intent.putExtra(NoteEditor.EXTRA_CALLER, NoteEditor.CALLER_CARDBROWSER_ADD);
                 startActivityForResultWithAnimation(intent, ADD_NOTE, ActivityTransitionAnimation.LEFT);
                 return true;
@@ -931,7 +937,7 @@ public class CardBrowser extends NavigationDrawerActivity implements
                 return true;
 
             case R.id.action_preview: {
-                Intent previewer = new Intent(CardBrowser.this, Previewer.class);
+                Intent previewer = new IntentTop(CardBrowser.this, Previewer.class);
                 if (mInMultiSelectMode && mCheckedCardPositions.size() > 1) {
                     // Multiple cards have been explicitly selected, so preview only those cards
                     previewer.putExtra("index", 0);
@@ -1161,7 +1167,7 @@ public class CardBrowser extends NavigationDrawerActivity implements
         }
         if (colIsOpen() && mCardsAdapter!= null) {
             // clear the existing card list
-            getCards().clear();
+            mCards = new ArrayList<Map<String, String>>();
             mCardsAdapter.notifyDataSetChanged();
             //  estimate maximum number of cards that could be visible (assuming worst-case minimum row height of 20dp)
             int numCardsToRender = (int) Math.ceil(mCardsListView.getHeight()/
@@ -1333,12 +1339,12 @@ public class CardBrowser extends NavigationDrawerActivity implements
         // render question and answer
         Map<String, String> qa = c._getQA(true, true);
         // Render full question / answer if the bafmt (i.e. "browser appearance") setting forced blank result
-        if (qa.get("q").equals("") || qa.get("a").equals("")) {
+        if ("".equals(qa.get("q")) || "".equals(qa.get("a"))) {
             HashMap<String, String> qaFull = c._getQA(true, false);
-            if (qa.get("q").equals("")) {
+            if ("".equals(qa.get("q"))) {
                 qa.put("q", qaFull.get("q"));
             }
-            if (qa.get("a").equals("")) {
+            if ("".equals(qa.get("a"))) {
                 qa.put("a", qaFull.get("a"));
             }
         }
@@ -1382,7 +1388,7 @@ public class CardBrowser extends NavigationDrawerActivity implements
         s = s.replace("<br />", " ");
         s = s.replace("<div>", " ");
         s = s.replace("\n", " ");
-        s = s.replaceAll("\\[sound:[^]]+\\]", "");
+        s = Utils.stripSoundMedia(s);
         s = s.replaceAll("\\[\\[type:[^]]+\\]\\]", "");
         s = Utils.stripHTMLMedia(s);
         s = s.trim();
@@ -1393,26 +1399,26 @@ public class CardBrowser extends NavigationDrawerActivity implements
      * Removes cards from view. Doesn't delete them in model (database).
      */
     private void removeNotesView(Card[] cards) {
-        List<Integer> posList = new ArrayList<>();
         long reviewerCardId = getReviewerCardId();
-        Map<Long, Integer> idToPos = getPositionMap(getCards());
+        List<Map<String, String>> oldMCards = getCards();
+        Map<Long, Integer> idToPos = getPositionMap(oldMCards);
+        Set<Long> idToRemove = new HashSet<Long>();
         for (Card card : cards) {
-            int pos = idToPos.containsKey(card.getId()) ? idToPos.get(card.getId()) : -1;
             if (card.getId() == reviewerCardId) {
                 mReloadRequired = true;
             }
-            if (pos >= 0 && pos < getCards().size()) {
-                posList.add(pos);
+            if (idToPos.containsKey(card.getId())) {
+                idToRemove.add(card.getId());
             }
         }
 
-        // sort in descending order so we can delete all
-        Collections.sort(posList, Collections.reverseOrder());
-
-        for (int delPos : posList) {
-            getCards().remove(delPos);
+        List<Map<String, String>> newMCards = new ArrayList<Map<String, String>>();
+        for (Map<String, String> card: oldMCards) {
+            if (! idToRemove.contains(Long.parseLong(card.get("id")))) {
+                newMCards.add(card);
+            }
         }
-
+        mCards = newMCards;
         updateList();
     }
 
@@ -1702,7 +1708,8 @@ public class CardBrowser extends NavigationDrawerActivity implements
             }
             // do nothing when pref is 100% and apply scaling only once
             if (mFontSizeScalePcent != 100 && Math.abs(mOriginalTextSize - currentSize) < 0.1) {
-                v.setTextSize(TypedValue.COMPLEX_UNIT_SP, mOriginalTextSize * (mFontSizeScalePcent / 100.0f));
+                // getTextSize returns value in absolute PX so use that in the setter
+                v.setTextSize(TypedValue.COMPLEX_UNIT_PX, mOriginalTextSize * (mFontSizeScalePcent / 100.0f));
             }
 
             if (mCustomTypeface != null) {

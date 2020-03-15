@@ -62,6 +62,7 @@ import com.ichi2.themes.Themes;
 import com.ichi2.ui.AppCompatPreferenceActivity;
 import com.ichi2.ui.ConfirmationPreference;
 import com.ichi2.ui.SeekBarPreference;
+import com.ichi2.utils.IntentTop;
 import com.ichi2.utils.LanguageUtil;
 import com.ichi2.anki.analytics.UsageAnalytics;
 import com.ichi2.utils.VersionUtils;
@@ -177,7 +178,7 @@ public class Preferences extends AppCompatPreferenceActivity implements Preferen
     // ----------------------------------------------------------------------------
 
     public static Intent getPreferenceSubscreenIntent(Context context, String subscreen) {
-        Intent i = new Intent(context, Preferences.class);
+        Intent i = new IntentTop(context, Preferences.class);
         i.putExtra(PreferenceActivity.EXTRA_SHOW_FRAGMENT, "com.ichi2.anki.Preferences$SettingsFragment");
         Bundle extras = new Bundle();
         extras.putString("subscreen", subscreen);
@@ -203,7 +204,7 @@ public class Preferences extends AppCompatPreferenceActivity implements Preferen
                         screen.findPreference("fullscreenMode");
                 fullscreenPreference.setOnPreferenceChangeListener((preference, newValue) -> {
                     SharedPreferences prefs = AnkiDroidApp.getSharedPrefs(Preferences.this);
-                    if (prefs.getBoolean("gestures", false) || !newValue.equals("2")) {
+                    if (prefs.getBoolean("gestures", false) || !"2".equals(newValue)) {
                         return true;
                     } else {
                         Toast.makeText(getApplicationContext(),
@@ -490,7 +491,7 @@ public class Preferences extends AppCompatPreferenceActivity implements Preferen
                     getCol().setMod();
                     break;
                 case "useCurrent":
-                    getCol().getConf().put("addToCur", ((ListPreference) pref).getValue().equals("0"));
+                    getCol().getConf().put("addToCur", "0".equals(((ListPreference) pref).getValue()));
                     getCol().setMod();
                     break;
                 case "dayOffset": {
@@ -673,11 +674,11 @@ public class Preferences extends AppCompatPreferenceActivity implements Preferen
         // Get summary text
         String oldSummary = mOriginalSumarries.get(pref.getKey());
         // Replace summary text with value according to some rules
-        if (oldSummary.equals("")) {
+        if ("".equals(oldSummary)) {
             pref.setSummary(value);
-        } else if (value.equals("")) {
+        } else if ("".equals(value)) {
             pref.setSummary(oldSummary);
-        } else if (pref.getKey().equals("minimumCardsDueForNotification")) {
+        } else if ("minimumCardsDueForNotification".equals(pref.getKey())) {
             pref.setSummary(replaceStringIfNumeric(oldSummary, value));
         } else {
             pref.setSummary(replaceString(oldSummary, value));

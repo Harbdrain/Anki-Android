@@ -95,26 +95,31 @@ public class ReminderService extends BroadcastReceiver {
 
     // getDeckDue information, will recur one time to workaround collection close if recur is true
     private Sched.DeckDueTreeNode getDeckDue(Context context, long deckId, boolean recur) {
+
+        // Avoid crashes if the deck is deleted while we are working
+        if (CollectionHelper.getInstance().getCol(context).getDecks().get(deckId, false) == null) {
+            Timber.d("Deck %s deleted while ReminderService was working. Ignoring", deckId);
+            return null;
+        }
+
         try {
             for (Sched.DeckDueTreeNode node : CollectionHelper.getInstance().getCol(context).getSched().deckDueTree()) {
                 if (node.did == deckId) {
                     return node;
                 }
             }
-        } catch (IllegalStateException e) {
-            if (!CollectionHelper.getInstance().colIsOpen()) {
-                if (recur) {
-                    Timber.i(e, "Database closed while working. Probably auto-sync. Will re-try after sleep.");
-                    try {
-                        Thread.sleep(1000);
-                    } catch (InterruptedException ex) {
-                        Timber.i(ex, "Thread interrupted while waiting to retry. Likely unimportant.");
-                        Thread.currentThread().interrupt();
-                    }
-                    return getDeckDue(context, deckId, false);
-                } else {
-                    Timber.w(e, "Database closed while working. No re-tries left.");
+        } catch (Exception e) {
+            if (recur) {
+                Timber.i(e, "getDeckDue exception - likely database re-initialization from auto-sync. Will re-try after sleep.");
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException ex) {
+                    Timber.i(ex, "Thread interrupted while waiting to retry. Likely unimportant.");
+                    Thread.currentThread().interrupt();
                 }
+                return getDeckDue(context, deckId, false);
+            } else {
+                Timber.w(e, "Database unavailable while working. No re-tries left.");
             }
         }
 

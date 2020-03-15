@@ -102,6 +102,7 @@ public class Utils {
     private static final Pattern scriptPattern = Pattern.compile("(?si)<script.*?>.*?</script>");
     private static final Pattern tagPattern = Pattern.compile("<.*?>");
     private static final Pattern imgPattern = Pattern.compile("(?i)<img[^>]+src=[\\\"']?([^\\\"'>]+)[\\\"']?[^>]*>");
+    private static final Pattern soundPattern = Pattern.compile("(?i)\\[sound:([^]]+)\\]");
     private static final Pattern htmlEntitiesPattern = Pattern.compile("&#?\\w+;");
 
     private static final String ALL_CHARACTERS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
@@ -223,13 +224,22 @@ public class Utils {
      * @return The text without the aforementioned tags.
      */
     public static String stripHTML(String s) {
+        s = stripHTMLScriptAndStyleTags(s);
+        Matcher htmlMatcher = tagPattern.matcher(s);
+        s = htmlMatcher.replaceAll("");
+        return entsToTxt(s);
+    }
+
+    /**
+     * Strips <style>...</style> and <script>...</script> HTML tags and content from a string.
+     * @param s The HTML text to be cleaned.
+     * @return The text without the aforementioned tags.
+     */
+    public static String stripHTMLScriptAndStyleTags(String s) {
         Matcher htmlMatcher = stylePattern.matcher(s);
         s = htmlMatcher.replaceAll("");
         htmlMatcher = scriptPattern.matcher(s);
-        s = htmlMatcher.replaceAll("");
-        htmlMatcher = tagPattern.matcher(s);
-        s = htmlMatcher.replaceAll("");
-        return entsToTxt(s);
+        return htmlMatcher.replaceAll("");
     }
 
 
@@ -239,6 +249,14 @@ public class Utils {
     public static String stripHTMLMedia(String s) {
         Matcher imgMatcher = imgPattern.matcher(s);
         return stripHTML(imgMatcher.replaceAll(" $1 "));
+    }
+
+    /**
+     * Strip sound but keep media filenames
+     */
+    public static String stripSoundMedia(String s) {
+        Matcher soundMatcher = soundPattern.matcher(s);
+        return soundMatcher.replaceAll(" $1 ");
     }
 
 
@@ -652,6 +670,7 @@ public class Utils {
                 success = true;
             } catch (IOException e) {
                 if (retryCnt == retries) {
+                    Timber.e("IOException while writing to file, out of retries.");
                     throw e;
                 } else {
                     Timber.e("IOException while writing to file, retrying...");
@@ -846,14 +865,11 @@ public class Utils {
     public static List<File> getImportableDecks(Context context) {
         String deckPath = CollectionHelper.getCurrentAnkiDroidDirectory(context);
         File dir = new File(deckPath);
-        int deckCount = 0;
-        File[] deckList = null;
-        if (dir.exists() && dir.isDirectory()) {
-            deckList = dir.listFiles(pathname -> pathname.isFile() && ImportUtils.isValidPackageName(pathname.getName()));
-            deckCount = deckList.length;
-        }
         List<File> decks = new ArrayList<>();
-        decks.addAll(Arrays.asList(deckList).subList(0, deckCount));
+        if (dir.exists() && dir.isDirectory()) {
+            File[] deckList = dir.listFiles(pathname -> pathname.isFile() && ImportUtils.isValidPackageName(pathname.getName()));
+            decks.addAll(Arrays.asList(deckList).subList(0, deckList.length));
+        }
         return decks;
     }
 

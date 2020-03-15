@@ -20,8 +20,12 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.Resources;
 import android.os.Bundle;
+
+import androidx.annotation.VisibleForTesting;
 import androidx.fragment.app.Fragment;
 import androidx.appcompat.widget.Toolbar;
+
+import android.text.Spanned;
 import android.text.method.LinkMovementMethod;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -39,6 +43,7 @@ import com.ichi2.compat.CompatHelper;
 import com.ichi2.libanki.Collection;
 import com.ichi2.libanki.Utils;
 import com.ichi2.themes.StyledProgressDialog;
+import com.ichi2.utils.IntentTop;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -148,7 +153,7 @@ public class StudyOptionsFragment extends Fragment implements Toolbar.OnMenuItem
      *                      set of values.
      */
     private void openFilteredDeckOptions(boolean defaultConfig) {
-        Intent i = new Intent(getActivity(), FilteredDeckOptions.class);
+        Intent i = new IntentTop(getActivity(), FilteredDeckOptions.class);
         i.putExtra("defaultConfig", defaultConfig);
         getActivity().startActivityForResult(i, DECK_OPTIONS);
         ActivityTransitionAnimation.slide(getActivity(), ActivityTransitionAnimation.FADE);
@@ -226,7 +231,7 @@ public class StudyOptionsFragment extends Fragment implements Toolbar.OnMenuItem
 
 
     private void openReviewer() {
-        Intent reviewer = new Intent(getActivity(), Reviewer.class);
+        Intent reviewer = new IntentTop(getActivity(), Reviewer.class);
         if (mFragmented) {
             getActivity().startActivityForResult(reviewer, AnkiActivity.REQUEST_REVIEW);
         } else {
@@ -297,7 +302,7 @@ public class StudyOptionsFragment extends Fragment implements Toolbar.OnMenuItem
                 if (getCol().getDecks().isDyn(getCol().getDecks().selected())) {
                     openFilteredDeckOptions();
                 } else {
-                    Intent i = new Intent(getActivity(), DeckOptions.class);
+                    Intent i = new IntentTop(getActivity(), DeckOptions.class);
                     getActivity().startActivityForResult(i, DECK_OPTIONS);
                     ActivityTransitionAnimation.slide(getActivity(), ActivityTransitionAnimation.FADE);
                 }
@@ -618,7 +623,7 @@ public class StudyOptionsFragment extends Fragment implements Toolbar.OnMenuItem
                         desc = getCol().getDecks().getActualDescription();
                     }
                     if (desc.length() > 0) {
-                        mTextDeckDescription.setText(CompatHelper.getCompat().fromHtml(desc));
+                        mTextDeckDescription.setText(formatDescription(desc));
                         mTextDeckDescription.setVisibility(View.VISIBLE);
                     } else {
                         mTextDeckDescription.setVisibility(View.GONE);
@@ -684,6 +689,14 @@ public class StudyOptionsFragment extends Fragment implements Toolbar.OnMenuItem
                 }
             }
         };
+    }
+
+    @VisibleForTesting()
+    static Spanned formatDescription(String desc) {
+        //#5715: In deck description, ignore what is in style and script tag
+        //Since we don't currently execute the JS/CSS, it's not worth displaying.
+        String withStrippedTags = Utils.stripHTMLScriptAndStyleTags(desc);
+        return CompatHelper.getCompat().fromHtml(withStrippedTags);
     }
 
     private Collection getCol() {

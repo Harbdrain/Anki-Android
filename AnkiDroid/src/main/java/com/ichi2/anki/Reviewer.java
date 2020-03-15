@@ -45,6 +45,7 @@ import com.ichi2.libanki.Card;
 import com.ichi2.libanki.Collection;
 import com.ichi2.libanki.Collection.DismissType;
 import com.ichi2.themes.Themes;
+import com.ichi2.utils.IntentTop;
 import com.ichi2.widget.WidgetStatus;
 
 import org.json.JSONException;
@@ -277,7 +278,7 @@ public class Reviewer extends AbstractFlashcardViewer {
                 break;
 
             case R.id.action_open_deck_options:
-                Intent i = new Intent(this, DeckOptions.class);
+                Intent i = new IntentTop(this, DeckOptions.class);
                 startActivityForResultWithAnimation(i, DECK_OPTIONS, ActivityTransitionAnimation.FADE);
                 break;
 
@@ -352,7 +353,7 @@ public class Reviewer extends AbstractFlashcardViewer {
 
 
     private void addNote() {
-        Intent intent = new Intent(this, NoteEditor.class);
+        Intent intent = new IntentTop(this, NoteEditor.class);
         intent.putExtra(NoteEditor.EXTRA_CALLER, NoteEditor.CALLER_REVIEWER_ADD);
         startActivityForResultWithAnimation(intent, ADD_NOTE, ActivityTransitionAnimation.LEFT);
     }
@@ -384,19 +385,19 @@ public class Reviewer extends AbstractFlashcardViewer {
         if (mCurrentCard != null) {
             switch (mCurrentCard.getUserFlag()) {
             case 1:
-                menu.findItem(R.id.action_flag).setIcon(R.drawable.flag_red);
+                menu.findItem(R.id.action_flag).setIcon(R.drawable.ic_flag_red);
                 break;
             case 2:
-                menu.findItem(R.id.action_flag).setIcon(R.drawable.flag_orange);
+                menu.findItem(R.id.action_flag).setIcon(R.drawable.ic_flag_orange);
                 break;
             case 3:
-                menu.findItem(R.id.action_flag).setIcon(R.drawable.flag_green);
+                menu.findItem(R.id.action_flag).setIcon(R.drawable.ic_flag_green);
                 break;
             case 4:
-                menu.findItem(R.id.action_flag).setIcon(R.drawable.flag_blue);
+                menu.findItem(R.id.action_flag).setIcon(R.drawable.ic_flag_blue);
                 break;
             default:
-                menu.findItem(R.id.action_flag).setIcon(R.drawable.flag_transparent);
+                menu.findItem(R.id.action_flag).setIcon(R.drawable.ic_flag_transparent);
                 break;
             }
         }

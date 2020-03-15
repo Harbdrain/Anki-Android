@@ -90,6 +90,8 @@ import com.ichi2.libanki.template.Template;
 import com.ichi2.themes.HtmlColors;
 import com.ichi2.themes.Themes;
 import com.ichi2.utils.DiffEngine;
+import com.ichi2.utils.IntentTop;
+import com.ichi2.utils.IntentTopNewTask;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -1136,7 +1138,7 @@ public abstract class AbstractFlashcardViewer extends NavigationDrawerActivity {
 
 
     protected boolean editCard() {
-        Intent editCard = new Intent(AbstractFlashcardViewer.this, NoteEditor.class);
+        Intent editCard = new IntentTop(AbstractFlashcardViewer.this, NoteEditor.class);
         editCard.putExtra(NoteEditor.EXTRA_CALLER, NoteEditor.CALLER_REVIEWER);
         sEditorCard = mCurrentCard;
         startActivityForResultWithAnimation(editCard, EDIT_CURRENT_CARD, ActivityTransitionAnimation.LEFT);
@@ -1714,7 +1716,7 @@ public abstract class AbstractFlashcardViewer extends NavigationDrawerActivity {
         mPrefShowETA = preferences.getBoolean("showETA", true);
         mUseInputTag = preferences.getBoolean("useInputTag", false);
         // On newer Androids, ignore this setting, which should be hidden in the prefs anyway.
-        mDisableClipboard = preferences.getString("dictionary", "0").equals("0");
+        mDisableClipboard = "0".equals(preferences.getString("dictionary", "0"));
         // mDeckFilename = preferences.getString("deckFilename", "");
         mNightMode = preferences.getBoolean("invertedColors", false);
         mPrefFullscreenReview = Integer.parseInt(preferences.getString("fullscreenMode", "0"));
@@ -1789,9 +1791,8 @@ public abstract class AbstractFlashcardViewer extends NavigationDrawerActivity {
             throw new RuntimeException(e);
         } catch (NullPointerException npe) {
             // NPE on collection only happens if the Collection is broken, follow AnkiActivity example
-            Intent deckPicker = new Intent(this, DeckPicker.class);
+            Intent deckPicker = new IntentTopNewTask(this, DeckPicker.class);
             deckPicker.putExtra("collectionLoadError", true); // don't currently do anything with this
-            deckPicker.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivityWithAnimation(deckPicker, ActivityTransitionAnimation.LEFT);
         }
     }
@@ -1997,7 +1998,7 @@ public abstract class AbstractFlashcardViewer extends NavigationDrawerActivity {
      * @return The correct answer text, with actual HTML and media references removed, and HTML entities unescaped.
      */
     protected String cleanCorrectAnswer(String answer) {
-        if (answer == null || answer.equals("")) {
+        if (answer == null || "".equals(answer)) {
             return "";
         }
         Matcher matcher = sSpanPattern.matcher(Utils.stripHTMLMedia(answer.trim()));
@@ -2017,7 +2018,7 @@ public abstract class AbstractFlashcardViewer extends NavigationDrawerActivity {
      * @return The typed answer text, cleaned up.
      */
     protected String cleanTypedAnswer(String answer) {
-        if (answer == null || answer.equals("")) {
+        if (answer == null || "".equals(answer)) {
             return "";
         }
         return Utils.nfcNormalized(answer.trim());
@@ -2871,10 +2872,16 @@ public abstract class AbstractFlashcardViewer extends NavigationDrawerActivity {
     }
 
     private void drawMark() {
+        if (mCurrentCard == null) {
+            return;
+        }
         mCard.loadUrl("javascript:_drawMark("+mCurrentCard.note().hasTag("marked")+");");
     }
 
     protected void onMark(Card card) {
+        if (card == null) {
+            return;
+        }
         Note note = card.note();
         if (note.hasTag("marked")) {
             note.delTag("marked");
@@ -2887,10 +2894,16 @@ public abstract class AbstractFlashcardViewer extends NavigationDrawerActivity {
     }
 
     private void drawFlag() {
+        if (mCurrentCard == null) {
+            return;
+        }
         mCard.loadUrl("javascript:_drawFlag("+mCurrentCard.getUserFlag()+");");
     }
 
     protected void onFlag(Card card, int flag) {
+        if (card == null) {
+            return;
+        }
         card.setUserFlag(flag);
         card.flush();
         refreshActionBar();
